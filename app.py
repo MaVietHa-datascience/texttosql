@@ -10,9 +10,12 @@ genai.configure(api_key = os.getenv("GOOGLE_API_KEY"))
 
 #function to load  google gemni model
 def get_gemini_response(question,prompt):
-    model=genai.GenerativeModel('gemini-2.0-flash')
-    response=model.generate_content([prompt[0],question])
-    return response.text
+    try: 
+        model=genai.GenerativeModel('gemini-2.0-flash')
+        response=model.generate_content([prompt[0],question])
+        return response.text.strip()
+    except:
+        return f"Error generating SQL: {e}"
 
 ## Fucntion To retrieve query from the database
 
@@ -28,20 +31,15 @@ def read_sql_query(sql,db):
     return rows
 
 ## Define Your Prompt
-prompt=[
+prompt = [
     """
-    You are an expert in converting English questions to SQL query!
-    The SQL database has the name STUDENT and has the following columns - NAME, CLASS, 
-    SECTION \n\nFor example,\nExample 1 - How many entries of records are present?, 
-    the SQL command will be something like this SELECT COUNT(*) FROM STUDENT ;
-    \nExample 2 - Tell me all the students studying in Data Science class?, 
-    the SQL command will be something like this SELECT * FROM STUDENT 
-    where CLASS="Data Science"; 
-    also the sql code should not have ``` in beginning or end and sql word in output
-
+    Convert the following English question into a SQL query for a database named STUDENT with columns NAME, CLASS, SECTION, MARKS. 
+    Return only the SQL query, no explanations, no extra text, no ``` marks, and no "sql" word. 
+    Examples:
+    - "How many entries of records are present?" → SELECT COUNT(*) FROM STUDENT
+    - "Tell me all the students studying in Data Science class?" → SELECT * FROM STUDENT WHERE CLASS="Data Science"
+    Input: 
     """
-
-
 ]
 
 ## Streamlit App
@@ -55,10 +53,12 @@ submit=st.button("Ask the question")
 
 # if submit is clicked
 if submit:
-    response=get_gemini_response(question,prompt)
-    print(response)
-    response=read_sql_query(response,"student.db")
-    st.subheader("The REsponse is")
-    for row in response:
-        print(row)
-        st.header(row)
+    response = get_gemini_response(question, prompt)
+    st.write("Generated SQL:", response)  # Debug: Show the query
+    result = read_sql_query(response, "student.db")
+    st.subheader("The Response is")
+    if isinstance(result, str):  # Error case
+        st.error(result)
+    else:
+        for row in result:
+            st.write(row)  # Better formatting
